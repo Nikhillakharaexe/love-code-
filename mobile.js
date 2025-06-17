@@ -1,89 +1,83 @@
 let highestZ = 1;
 
 class Paper {
-  holdingPaper = false;
-  touchStartX = 0;
-  touchStartY = 0;
-  touchMoveX = 0;
-  touchMoveY = 0;
-  touchEndX = 0;
-  touchEndY = 0;
-  prevTouchX = 0;
-  prevTouchY = 0;
-  velX = 0;
-  velY = 0;
-  rotation = Math.random() * 30 - 15;
-  currentPaperX = 0;
-  currentPaperY = 0;
-  rotating = false;
+  constructor() {
+    this.holdingPaper = false;
+    this.startX = 0;
+    this.startY = 0;
+    this.currentX = 0;
+    this.currentY = 0;
+    this.offsetX = 0;
+    this.offsetY = 0;
+    this.rotation = Math.random() * 30 - 15;
+    this.paper = null;
+  }
 
   init(paper) {
-    paper.addEventListener('touchmove', (e) => {
-      e.preventDefault();
-      if(!this.rotating) {
-        this.touchMoveX = e.touches[0].clientX;
-        this.touchMoveY = e.touches[0].clientY;
-        
-        this.velX = this.touchMoveX - this.prevTouchX;
-        this.velY = this.touchMoveY - this.prevTouchY;
-      }
-        
-      const dirX = e.touches[0].clientX - this.touchStartX;
-      const dirY = e.touches[0].clientY - this.touchStartY;
-      const dirLength = Math.sqrt(dirX*dirX+dirY*dirY);
-      const dirNormalizedX = dirX / dirLength;
-      const dirNormalizedY = dirY / dirLength;
+    this.paper = paper;
+    paper.style.transform = `rotateZ(${this.rotation}deg)`;
 
-      const angle = Math.atan2(dirNormalizedY, dirNormalizedX);
-      let degrees = 180 * angle / Math.PI;
-      degrees = (360 + Math.round(degrees)) % 360;
-      if(this.rotating) {
-        this.rotation = degrees;
-      }
+    // Desktop
+    paper.addEventListener('mousedown', this.onMouseDown.bind(this));
+    document.addEventListener('mousemove', this.onMouseMove.bind(this));
+    document.addEventListener('mouseup', this.onMouseUp.bind(this));
 
-      if(this.holdingPaper) {
-        if(!this.rotating) {
-          this.currentPaperX += this.velX;
-          this.currentPaperY += this.velY;
-        }
-        this.prevTouchX = this.touchMoveX;
-        this.prevTouchY = this.touchMoveY;
+    // Mobile
+    paper.addEventListener('touchstart', this.onTouchStart.bind(this), { passive: false });
+    document.addEventListener('touchmove', this.onTouchMove.bind(this), { passive: false });
+    document.addEventListener('touchend', this.onTouchEnd.bind(this));
+  }
 
-        paper.style.transform = `translateX(${this.currentPaperX}px) translateY(${this.currentPaperY}px) rotateZ(${this.rotation}deg)`;
-      }
-    })
+  onMouseDown(e) {
+    this.holdingPaper = true;
+    this.startX = e.clientX;
+    this.startY = e.clientY;
+    this.paper.style.zIndex = highestZ++;
+  }
 
-    paper.addEventListener('touchstart', (e) => {
-      if(this.holdingPaper) return; 
-      this.holdingPaper = true;
-      
-      paper.style.zIndex = highestZ;
-      highestZ += 1;
-      
-      this.touchStartX = e.touches[0].clientX;
-      this.touchStartY = e.touches[0].clientY;
-      this.prevTouchX = this.touchStartX;
-      this.prevTouchY = this.touchStartY;
-    });
-    paper.addEventListener('touchend', () => {
-      this.holdingPaper = false;
-      this.rotating = false;
-    });
+  onMouseMove(e) {
+    if (!this.holdingPaper) return;
+    this.offsetX = e.clientX - this.startX;
+    this.offsetY = e.clientY - this.startY;
+    this.currentX += this.offsetX;
+    this.currentY += this.offsetY;
+    this.paper.style.transform = `translate(${this.currentX}px, ${this.currentY}px) rotateZ(${this.rotation}deg)`;
+    this.startX = e.clientX;
+    this.startY = e.clientY;
+  }
 
-    // For two-finger rotation on touch screens
-    paper.addEventListener('gesturestart', (e) => {
-      e.preventDefault();
-      this.rotating = true;
-    });
-    paper.addEventListener('gestureend', () => {
-      this.rotating = false;
-    });
+  onMouseUp() {
+    this.holdingPaper = false;
+  }
+
+  onTouchStart(e) {
+    if (this.holdingPaper) return;
+    e.preventDefault();
+    this.holdingPaper = true;
+    this.startX = e.touches[0].clientX;
+    this.startY = e.touches[0].clientY;
+    this.paper.style.zIndex = highestZ++;
+  }
+
+  onTouchMove(e) {
+    if (!this.holdingPaper) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    this.offsetX = touch.clientX - this.startX;
+    this.offsetY = touch.clientY - this.startY;
+    this.currentX += this.offsetX;
+    this.currentY += this.offsetY;
+    this.paper.style.transform = `translate(${this.currentX}px, ${this.currentY}px) rotateZ(${this.rotation}deg)`;
+    this.startX = touch.clientX;
+    this.startY = touch.clientY;
+  }
+
+  onTouchEnd() {
+    this.holdingPaper = false;
   }
 }
 
-const papers = Array.from(document.querySelectorAll('.paper'));
-
-papers.forEach(paper => {
-  const p = new Paper();
-  p.init(paper);
+// Apply to all papers
+document.querySelectorAll('.paper').forEach(paper => {
+  new Paper().init(paper);
 });
